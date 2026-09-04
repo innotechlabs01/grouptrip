@@ -24,6 +24,10 @@ const (
 	LedgerFailed    LedgerType = "FAILED"
 )
 
+// ErrContributionAlreadyRecorded is returned by RecordCollected when the same
+// contribution_id already has a ledger entry (idempotency, I-5).
+var ErrContributionAlreadyRecorded = errors.New("fund: contribution already recorded (idempotency, I-5)")
+
 // FundMember is a participant in a Fund with a derived per-person target.
 type FundMember struct {
 	UserID          string
@@ -219,7 +223,7 @@ func (f *Fund) RecordCollected(amount Money, contributionID string) error {
 		return errors.New("fund: can only record collected money on an ACTIVE fund")
 	}
 	if f.hasContribution(contributionID) {
-		return errors.New("fund: contribution already recorded (idempotency, I-5)")
+		return ErrContributionAlreadyRecorded
 	}
 	f.appendLedger(FundLedgerEntry{
 		ID:             newID(),

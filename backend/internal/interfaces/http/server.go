@@ -4,18 +4,27 @@ package http
 import (
 	"net/http"
 
+	"github.com/frg/grouptrip/internal/infrastructure/contribrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/fundrepo"
 )
 
 // Server is the HTTP server holding dependencies and routing.
 type Server struct {
-	repo *fundrepo.SQLiteRepo
-	mux  *http.ServeMux
+	repo     *fundrepo.SQLiteRepo
+	contribs *contribrepo.SQLiteContribRepo
+	mux      *http.ServeMux
 }
 
-// NewServer creates a Server and registers all routes.
+// NewServer creates a Server and registers all routes (without webhook deps).
 func NewServer(repo *fundrepo.SQLiteRepo) *Server {
-	s := &Server{repo: repo, mux: http.NewServeMux()}
+	return NewServerWithWebhook(repo, nil)
+}
+
+// NewServerWithWebhook creates a Server with the optional contribution repository
+// wired, enabling the Polar webhook route. When contribs is nil the webhook
+// route is not registered.
+func NewServerWithWebhook(repo *fundrepo.SQLiteRepo, contribs *contribrepo.SQLiteContribRepo) *Server {
+	s := &Server{repo: repo, contribs: contribs, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
@@ -27,6 +36,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /funds/{id}/members", s.addMember)
 	// GET /funds/{id} — load and return a fund
 	s.mux.HandleFunc("GET /funds/{id}", s.getFund)
+	// POST /webhooks/polar — Polar payment webhook (only when wired)
+	if s.contribs != nil {
+		s.mux.HandleFunc("POST /webhooks/polar", s.webhookPolar)
+	}
 }
 
 // ServeHTTP delegates to the underlying mux.

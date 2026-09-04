@@ -307,11 +307,16 @@ The platform enforces idempotency **at the model level**:
 ---
 
 ## 10. Open Questions / Next Steps
-- [ ] Provision Polar paid plan + verify off-session arbitrary-charge access (preview feature).
+- [ ] Enable off-session arbitrary-charge access (preview feature; paid plan) via Polar support.
       **Status (probed 2026-09-04):** the LocalPlug sandbox org (`28dc9312-991b-4cb5-8022-192896135af4`)
-      has `orders:write` but returns `403 OffSessionChargesNotEnabled` on `POST /v1/orders/`. Off-session
-      is a preview feature that must be enabled by Polar support (paid plan) — **cannot be enabled via API**.
-      Action: contact Polar support to opt the org in; until then automated draft→finalize charging is blocked.
+      returns `403 OffSessionChargesNotEnabled` on `POST /v1/orders/` — a preview feature that must be
+      enabled by Polar support; **cannot be enabled via API**. Until then automated draft→finalize is blocked.
+- [ ] Set the real public webhook URL (currently a placeholder `https://example.invalid/webhooks/polar`)
+      on webhook endpoint `5c8b8d7b-73b0-493b-b3fb-c06cb01603de` once grouptrip is deployed (or via tunnel).
+- [x] Provision Polar (sandbox) via API: one-time product **GroupTrip Contribution**
+      (`c446df0e-6c49-4042-8117-f83269864141`, price `ccd99a87-b314-4f0c-9430-b79212dc02c9`,
+      custom amount, min $1.00) + webhook endpoint `5c8b8d7b-73b0-493b-b3fb-c06cb01603de`
+      (`format: raw`, events `[order.paid]`). Credentials/config in `backend/.env.local` (git-ignored).
 - [ ] Decide refund policy (full vs partial) and link to `RefundContribution`.
 - [x] **Webhook signature verification** (Standard Webhooks HMAC-SHA256: `webhook-id`/`webhook-timestamp`/
       `webhook-signature`, raw-body sign, 401 on invalid, fail-closed without secret) — commit `c1f8e87`.

@@ -4,6 +4,13 @@
 *.db-shm
 *.db-journal
 
+# Secrets / local env (keep tokens out of git)
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.*.example
+
 # Go
 backend/*.test
 

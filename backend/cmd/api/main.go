@@ -36,7 +36,9 @@ func main() {
 	_ = payments.NewPolarClientFromEnv(http.DefaultClient)
 
 	// HTTP server; the Polar webhook route is enabled because contribRepo is wired.
-	srv := httptransport.NewServerWithWebhook(fundRepo, contribRepo)
+	// The webhook signature is verified with POLAR_WEBHOOK_SECRET; if it is unset the
+	// webhook route fails closed (processes no events).
+	srv := httptransport.NewServerWithWebhook(fundRepo, contribRepo, os.Getenv("POLAR_WEBHOOK_SECRET"))
 
 	addr := os.Getenv("PORT")
 	if addr == "" {

@@ -26,15 +26,23 @@ type orderPaidWebhook struct {
 
 // webhookPolar handles POST /webhooks/polar.
 // Expected payload: {"type":"order.paid","data":{"order":{"id":"<order-id>","status":"paid"}}}
+// The Standard Webhooks signature is verified first (HTTPS transport + HMAC-SHA256);
+// without a configured secret the endpoint fails closed (never processes unverified events).
 func (s *Server) webhookPolar(w http.ResponseWriter, r *http.Request) {
-	if s.contribs == nil {
+	if s.contribs == nil || s.webhookSecret == "" {
 		writeJSONError(w, http.StatusInternalServerError, "webhook not configured")
 		return
 	}
 
+	// Read the raw body BEFORE parsing: the signature is over the exact bytes received.
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := verifyPolarWebhook(s.webhookSecret, body, r.Header); err != nil {
+		writeJSONError(w, http.StatusUnauthorized, "invalid webhook signature")
 		return
 	}
 

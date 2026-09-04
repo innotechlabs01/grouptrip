@@ -10,21 +10,22 @@ import (
 
 // Server is the HTTP server holding dependencies and routing.
 type Server struct {
-	repo     *fundrepo.SQLiteRepo
-	contribs *contribrepo.SQLiteContribRepo
-	mux      *http.ServeMux
+	repo          *fundrepo.SQLiteRepo
+	contribs      *contribrepo.SQLiteContribRepo
+	webhookSecret string
+	mux           *http.ServeMux
 }
 
 // NewServer creates a Server and registers all routes (without webhook deps).
 func NewServer(repo *fundrepo.SQLiteRepo) *Server {
-	return NewServerWithWebhook(repo, nil)
+	return NewServerWithWebhook(repo, nil, "")
 }
 
-// NewServerWithWebhook creates a Server with the optional contribution repository
-// wired, enabling the Polar webhook route. When contribs is nil the webhook
-// route is not registered.
-func NewServerWithWebhook(repo *fundrepo.SQLiteRepo, contribs *contribrepo.SQLiteContribRepo) *Server {
-	s := &Server{repo: repo, contribs: contribs, mux: http.NewServeMux()}
+// NewServerWithWebhook creates a Server with the optional contribution repository and
+// webhook secret wired, enabling the Polar webhook route. When contribs is nil the webhook
+// route is not registered; when webhookSecret is empty the route fails closed (401/500).
+func NewServerWithWebhook(repo *fundrepo.SQLiteRepo, contribs *contribrepo.SQLiteContribRepo, webhookSecret string) *Server {
+	s := &Server{repo: repo, contribs: contribs, webhookSecret: webhookSecret, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }

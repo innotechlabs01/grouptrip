@@ -287,9 +287,15 @@ implementation for the MVP (option B of the earlier decision).
 ### Idempotency (I-5)
 Polar does not expose a client-supplied idempotency key on draft-order create/finalize.
 The platform enforces idempotency **at the model level**:
-- One `Contribution` = one draft order. Never create a new draft for an existing (plan, cycle).
-- `ChargeContribution` is guarded so a Contribution already PROCESSING/SUCCEEDED is never
-  re-finalized; terminal states are recorded before any new provider call.
+- **Persist `Contribution` as a first-class entity** (SQLite `contributions` table). The
+  `ContributeCommand` writes the Contribution **PENDING before any provider call** (the
+  idempotency anchor), stores the draft `order_id` as `external_ref`, and never re-charges:
+  a non-terminal Contribution with the same ID is a no-op (retry path), a terminal one is refused.
+- **Webhook `order.paid` is idempotent**: `HandleOrderPaid` looks the Contribution up by
+  `external_ref`, advances it to SUCCEEDED, and records COLLECTED exactly once. A redelivered
+  webhook on an already-terminal Contribution is a no-op; a duplicate COLLECTED is rejected by
+  both the domain (`ErrContributionAlreadyRecorded`) and a partial UNIQUE index on
+  `ledger.contribution_id WHERE type='COLLECTED'`.
 - The ledger append is single-write per contribution (I-6).
 
 ### Security notes (per `02-engineering/security.md`)
@@ -303,6 +309,17 @@ The platform enforces idempotency **at the model level**:
 ## 10. Open Questions / Next Steps
 - [ ] Provision Polar paid plan + verify off-session arbitrary-charge access (preview feature).
 - [ ] Decide refund policy (full vs partial) and link to `RefundContribution`.
-- [ ] Finalize webhook signature verification details against Polar's docs.
-- [ ] Concrete `infrastructure/payments` Polar adapter (Go), tested against this contract.
+- [ ] **Webhook signature verification** against Polar's docs (handler currently parses and trusts `order.paid`; must validate the signed payload before attribution).
+- [x] Concrete `infrastructure/payments` Polar adapter (Go), tested against this contract.
+- [x] Idempotent contribution charge command (`ContributeCommand`) + `order.paid` webhook handler + `Contribution` persistence (SQLite).
+
+### Follow-ups (implementation note, not blocking v0)
+- `ContributeCommand` marks a Contribution **FAILED on any finalize error** (incl. transient). A
+  charge that Polar actually took but whose response was lost would be un-attributable; the
+  finalize step should eventually leave transient errors in a retryable state and reconcile via
+  Polar orders on a later pass.
+- `webhookPolar` currently swallows events into `events.NoopSink{}` (no event infra yet); the
+  `ContributionSucceeded`/`FundUpdated` events are emitted but not yet consumed.
+- Not-found detection uses a small string match (`contribrepo: not found`) in a couple of spots;
+  converge on a single shared sentinel if it grows.
 

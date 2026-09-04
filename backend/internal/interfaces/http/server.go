@@ -3,10 +3,13 @@ package http
 
 import (
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/frg/grouptrip/internal/application/authservice"
 	"github.com/frg/grouptrip/internal/application/commands"
 	"github.com/frg/grouptrip/internal/application/queries"
+	"github.com/frg/grouptrip/internal/interfaces/http/middleware"
 	"github.com/frg/grouptrip/internal/infrastructure/contribrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/fundrepo"
 )
@@ -20,6 +23,7 @@ type Server struct {
 	progress      *queries.GetFundProgress
 	auth          *authservice.SessionService
 	mux           *http.ServeMux
+	rateLimiter   *middleware.RateLimiter
 }
 
 // NewServer creates a Server and registers all routes (without webhook deps).
@@ -99,7 +103,14 @@ func (s *Server) routes() {
 	}
 }
 
-// ServeHTTP delegates to the underlying mux.
+// ServeHTTP delegates to the underlying mux, optionally rate limited.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("RATE_LIMIT_ENABLED") == "true" {
+		if s.rateLimiter == nil {
+			s.rateLimiter = middleware.NewRateLimiter(100, time.Minute)
+		}
+		s.rateLimiter.Middleware(s.mux).ServeHTTP(w, r)
+		return
+	}
 	s.mux.ServeHTTP(w, r)
 }

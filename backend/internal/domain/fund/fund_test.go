@@ -84,6 +84,22 @@ func TestRecordCollectedRequiresActive(t *testing.T) {
 	}
 }
 
+func TestRecordCollectedIdempotentByContribution(t *testing.T) {
+	f, _ := NewFund("f1", "t1", mustMoney(t, 2000, "cop"))
+	_, _ = f.AddMember("u1")
+	_ = f.Activate()
+	if err := f.RecordCollected(mustMoney(t, 500, "cop"), "c1"); err != nil {
+		t.Fatal(err)
+	}
+	// Re-recording the same contribution must be rejected (I-5): never double-count.
+	if err := f.RecordCollected(mustMoney(t, 500, "cop"), "c1"); err == nil {
+		t.Fatal("expected error recording duplicate contribution_id")
+	}
+	if f.Collected().Amount() != 500 {
+		t.Fatalf("expected collected 500 (duplicate rejected), got %d", f.Collected().Amount())
+	}
+}
+
 func TestLedgerIsAppendOnly(t *testing.T) {
 	f, _ := NewFund("f1", "t1", mustMoney(t, 1000, "cop"))
 	_, _ = f.AddMember("u1")

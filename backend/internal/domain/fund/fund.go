@@ -123,6 +123,16 @@ func (f *Fund) appendLedger(entry FundLedgerEntry) {
 	f.UpdatedAt = time.Now()
 }
 
+// hasContribution reports whether the ledger already holds an entry for contributionID (I-5).
+func (f *Fund) hasContribution(contributionID string) bool {
+	for _, e := range f.ledger {
+		if e.ContributionID == contributionID {
+			return true
+		}
+	}
+	return false
+}
+
 // Collected projects the COLLECTED balance from ledger deltas.
 func (f *Fund) Collected() Money {
 	zero := ZeroMoney(f.Goal.currency)
@@ -198,12 +208,18 @@ func RebuildFund(
 
 // RecordCollected appends a COLLECTED ledger entry on provider-confirmed success (I-3).
 // It is the authority that turns an authorized contribution into real collected money.
+// Idempotent by contributionID (I-5): a contribution that already has a ledger entry is
+// rejected, never double-counted. The caller must also guard at persistence with a UNIQUE
+// constraint on contribution_id so a concurrent processor cannot race past this check.
 func (f *Fund) RecordCollected(amount Money, contributionID string) error {
 	if contributionID == "" {
 		return errors.New("fund: contribution id must not be empty")
 	}
 	if f.Status != StatusActive {
 		return errors.New("fund: can only record collected money on an ACTIVE fund")
+	}
+	if f.hasContribution(contributionID) {
+		return errors.New("fund: contribution already recorded (idempotency, I-5)")
 	}
 	f.appendLedger(FundLedgerEntry{
 		ID:             newID(),

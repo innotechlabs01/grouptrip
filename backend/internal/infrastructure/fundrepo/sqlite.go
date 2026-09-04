@@ -92,6 +92,19 @@ func (r *SQLiteRepo) Migrate() error {
 	if err != nil {
 		return fmt.Errorf("fundrepo migrate fund_ledger: %w", err)
 	}
+
+	// I-5 idempotency: a contribution's COLLECTED signal may be recorded exactly once.
+	// Partial index (type='COLLECTED') lets a PENDING/FAILED entry share the same
+	// contribution_id without colliding, but blocks double-counting a successful charge.
+	// The domain also rejects duplicates (RecordCollected -> hasContribution); this index
+	// is the persistence guard against a concurrent processor racing past that check.
+	_, err = r.db.ExecContext(ctx, `
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_fund_ledger_collected_uniq
+		ON fund_ledger(contribution_id) WHERE type = 'COLLECTED';
+	`)
+	if err != nil {
+		return fmt.Errorf("fundrepo migrate ledger collected unique: %w", err)
+	}
 	return nil
 }
 

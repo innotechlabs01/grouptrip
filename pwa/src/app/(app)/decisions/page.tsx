@@ -1,0 +1,1 @@
+export default function DecisionsPage(){ return <div className="p-6"><h1 className="text-2xl font-bold">Decisiones</h1><p>Votaciones del viaje</p></div> }

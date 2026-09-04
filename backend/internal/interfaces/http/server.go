@@ -75,7 +75,9 @@ func NewServerWithAuth(
 }
 
 func (s *Server) routes() {
-	// POST /funds — create a new fund
+	// Trip routes
+	s.mux.HandleFunc("GET /trips", s.listTrips)
+	s.mux.HandleFunc("POST /trips", s.createTrip)
 	s.mux.HandleFunc("POST /funds", s.createFund)
 	// POST /funds/{id}/members — add a member to a fund
 	s.mux.HandleFunc("POST /funds/{id}/members", s.addMember)

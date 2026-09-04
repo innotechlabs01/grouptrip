@@ -62,3 +62,10 @@ func (m Money) Div(n int) (Money, error) {
 func (m Money) String() string {
 	return fmt.Sprintf("%d %s", m.amount, m.currency)
 }
+
+// NewRawMoney reconstructs a Money value from persisted parts WITHOUT validation.
+// Use only for repository hydration — never for write-path construction.
+// The caller is responsible for ensuring amount > 0 and currency is non-empty.
+func NewRawMoney(amount int64, currency string) Money {
+	return Money{amount: amount, currency: currency}
+}

@@ -156,6 +156,46 @@ func (f *Fund) Failed() Money {
 	return zero
 }
 
+// RebuildFund reconstructs a Fund from persisted state for repository hydration only.
+// It does NOT re-run write-path invariants — the data is assumed to have been validated
+// when originally persisted. Validates only structural invariants (non-empty id, trip_id,
+// and currency) to prevent obviously corrupt data from entering the domain layer.
+func RebuildFund(
+	id, tripID string,
+	goal Money,
+	status Status,
+	members []FundMember,
+	ledger []FundLedgerEntry,
+	goalAdjustments int,
+	createdAt, updatedAt time.Time,
+) (*Fund, error) {
+	if id == "" {
+		return nil, errors.New("fund: id must not be empty")
+	}
+	if tripID == "" {
+		return nil, errors.New("fund: trip id must not be empty")
+	}
+	if goal.currency == "" {
+		return nil, errors.New("fund: currency must not be empty")
+	}
+	// Defensive copy: callers retain ownership of their slices.
+	m := make([]FundMember, len(members))
+	copy(m, members)
+	l := make([]FundLedgerEntry, len(ledger))
+	copy(l, ledger)
+	return &Fund{
+		ID:              id,
+		TripID:          tripID,
+		Goal:            goal,
+		Status:          status,
+		Members:         m,
+		ledger:          l,
+		GoalAdjustments: goalAdjustments,
+		CreatedAt:       createdAt,
+		UpdatedAt:       updatedAt,
+	}, nil
+}
+
 // RecordCollected appends a COLLECTED ledger entry on provider-confirmed success (I-3).
 // It is the authority that turns an authorized contribution into real collected money.
 func (f *Fund) RecordCollected(amount Money, contributionID string) error {

@@ -8,7 +8,7 @@ import (
 )
 
 // MemoryRepo is an in-memory FundRepository for tests and early scaffolding.
-// NOT for production — swap for a PostgreSQL-backed repository later.
+// NOT for production — swap for the Turso-backed repository (sqlite.go).
 type MemoryRepo struct {
 	mu    sync.RWMutex
 	funds map[string]*fund.Fund

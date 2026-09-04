@@ -74,7 +74,7 @@ The label in the diagram above (`Web / PWA`) reflects this one codebase.
 - DDD
 - Domain Events
 - Event-driven (see `event-driven.md`)
-- PostgreSQL persistence (see `database.md`)
+- Turso (libSQL/SQLite-compatible) persistence (see `database.md`)
 - Payment orchestration, not wallet ownership (MVP)
 
 ## Event Examples

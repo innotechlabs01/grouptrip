@@ -1,7 +1,16 @@
 # Database
 
 ## Engine
-PostgreSQL
+**Turso** (libSQL, SQLite-compatible), embedded-capable and distributed via replicas.
+
+Key properties for this product:
+- **SQLite-compatible** — transactions, foreign keys, and the append-only Fund Ledger work
+  naturally; ACID guarantees for money movements.
+- **Embedded + cloud** — libSQL driver embeds in Go; Turso offers replicas and change-data-capture.
+- **Single-writer, many-readers** — fits our per-fund and per-trip access patterns.
+
+> Money stored as **int64 in the smallest currency unit** (no floats). Ledger stays
+> append-only; balances are derived projections, never mutated in place (ADR-003).
 
 ## Entities
 

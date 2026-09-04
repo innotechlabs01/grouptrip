@@ -77,9 +77,9 @@ The product is fundamentally event-driven. Domain events propagate state:
 - Frontend: **PWA-first** — single Web/PWA (Next.js), installable on mobile, with push
   notifications and Web Payments API (Apple Pay / Google Pay) for in-flow contributions
 - Native app = post-MVP evolution only, never a blocker (frontend interchangeable; no backend rewrite)
-- Database: PostgreSQL
+- Database: Turso (libSQL / SQLite-compatible), embedded + distributed replicas
 - Event-driven architecture
-- Monorepo
+- Monorepo: `backend/` (Go API) + `pwa/` (Next.js PWA) + `docs/` (specs), each self-contained
 
 ## §11 MVP Boundary
 

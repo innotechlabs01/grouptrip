@@ -1,0 +1,16 @@
+# Local databases (Turso/libSQL runtime + test artifacts)
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Go
+backend/*.test
+
+# PWA (once scaffolded)
+pwa/node_modules/
+pwa/.next/
+pwa/out/
+
+# OS / editor
+.DS_Store

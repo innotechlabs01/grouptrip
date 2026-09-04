@@ -15,12 +15,12 @@ Do not build a self-owned wallet in the MVP.
 - Provider owns card data, security, compliance
 - Custody model (B) is a future, deliberate, regulated move
 
-## ADR-002 — Go + Clean Architecture + DDD, PostgreSQL, Event-driven
+## ADR-002 — Go + Clean Architecture + DDD, Turso (libSQL), Event-driven
 **Status: Accepted**
 
 **Context:** Domain complexity (esp. finance) needs strict boundaries; events fit money flows.
 
-**Decision:** Backend Go (Clean Architecture + DDD + domain events); PostgreSQL; event-driven.
+**Decision:** Backend Go (Clean Architecture + DDD + domain events); Turso (libSQL/SQLite-compatible) as persistence; event-driven.
 
 **Consequences:**
 - Clear domain/application/infrastructure layering

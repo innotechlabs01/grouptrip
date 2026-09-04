@@ -6,11 +6,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <QueryProvider>
-        <nav style={{display:'flex',gap:12,padding:12,borderBottom:'1px solid #ddd'}}>
-          <a href="/trips">Trips</a>
-          <a href="/budget">Budget</a>
-          <a href="/decisions">Decisiones</a>
-          <a href="/expenses">Gastos</a>
+        <nav style={{display:'flex',gap:16,padding:16,borderBottom:'2px solid #111',background:'#fafafa',fontWeight:600}}>
+          <a href="/trips">✈️ Trips</a>
+          <a href="/budget">💰 Budget</a>
+          <a href="/decisions">🗳️ Decisiones</a>
+          <a href="/expenses">🧾 Gastos</a>
         </nav>
         {children}
         </QueryProvider>

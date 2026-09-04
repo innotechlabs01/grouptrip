@@ -23,6 +23,7 @@ Navigation map for humans and AIs. Read in order.
 - `01-architecture/api.md` — API contract
 - `01-architecture/event-driven.md` — event architecture
 - `01-architecture/ddd.md` — DDD layering
+- `01-architecture/fund-spec.md` — Fund domain technical specification (financial heart)
 
 ## 5. State Machines
 - `06-state-machines/` — trip, decision, budget, fund, payment, reservation

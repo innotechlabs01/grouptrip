@@ -43,6 +43,7 @@ TRIP
 - Fund, FundMember, ContributionPlan, Contribution, FundLedger
 - Per-person: goal / participants = per-person target
 - Strategies: single, monthly, biweekly, weekly (auto-recommended)
+- **Full technical spec:** [`01-architecture/fund-spec.md`](fund-spec.md)
 
 ### Payments (10)
 - Payment, PaymentIntent, PaymentMethodReference, PaymentAttempt, Refund

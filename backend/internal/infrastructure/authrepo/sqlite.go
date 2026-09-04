@@ -5,7 +5,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/frg/grouptrip/internal/domain/auth"
 )
 
 // SQLiteAuthRepo persists users and refresh tokens in SQLite/libsql.
@@ -44,6 +47,15 @@ func (r *SQLiteAuthRepo) Migrate() error {
 	`)
 	if err != nil {
 		return fmt.Errorf("authrepo migrate refresh_tokens: %w", err)
+	}
+	// add used column if not exists
+	_, err = r.db.ExecContext(ctx, `ALTER TABLE refresh_tokens ADD COLUMN used INTEGER NOT NULL DEFAULT 0`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("authrepo migrate refresh_tokens used: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx, `ALTER TABLE refresh_tokens ADD COLUMN revoked_at INTEGER`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("authrepo migrate refresh_tokens revoked_at: %w", err)
 	}
 	return nil
 }
@@ -169,4 +181,100 @@ func (r *SQLiteAuthRepo) ListRefreshTokens(userID string) ([]*RefreshToken, erro
 		return nil, fmt.Errorf("authrepo list rows: %w", err)
 	}
 	return tokens, nil
+}
+
+// CreateUser creates a user using domain auth model.
+func (r *SQLiteAuthRepo) CreateUser(ctx context.Context, u *auth.User) error {
+	// Check duplicate email
+	if _, err := r.FindUserByEmail(u.Email); err == nil {
+		return fmt.Errorf("authrepo: email already taken")
+	} else if err != nil && err.Error() != "authrepo: user not found" {
+		return err
+	}
+	repoUser := &User{
+		ID:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+	}
+	if err := r.SaveUser(repoUser); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FindByEmail returns a domain user by email.
+func (r *SQLiteAuthRepo) FindByEmail(ctx context.Context, email string) (*auth.User, error) {
+	u, err := r.FindUserByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	return &auth.User{
+		ID:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+	}, nil
+}
+
+// FindByID returns a domain user by id.
+func (r *SQLiteAuthRepo) FindByID(ctx context.Context, id string) (*auth.User, error) {
+	// Find by scanning users table
+	ctxb := context.Background()
+	var u User
+	var createdUnix int64
+	err := r.db.QueryRowContext(ctxb, `SELECT id, email, name, password_hash, created_at FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &createdUnix)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("authrepo: user not found")
+		}
+		return nil, fmt.Errorf("authrepo find by id: %w", err)
+	}
+	u.CreatedAt = time.Unix(createdUnix, 0).UTC()
+	return &auth.User{
+		ID:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+	}, nil
+}
+
+// StoreRefreshToken stores a refresh token hash.
+func (r *SQLiteAuthRepo) StoreRefreshToken(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
+	t := &RefreshToken{
+		ID:        fmt.Sprintf("%s-%s", userID, tokenHash[:8]),
+		UserID:    userID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now().UTC(),
+	}
+	return r.SaveRefreshToken(t)
+}
+
+// IsTokenUsed checks if token has been used.
+func (r *SQLiteAuthRepo) IsTokenUsed(ctx context.Context, tokenHash string) (bool, error) {
+	var used int
+	err := r.db.QueryRowContext(ctx, `SELECT used FROM refresh_tokens WHERE token_hash = ?`, tokenHash).Scan(&used)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// token not found → treat as used/revoked for replay detection
+			return true, nil
+		}
+		return false, fmt.Errorf("authrepo is token used: %w", err)
+	}
+	return used != 0, nil
+}
+
+// MarkTokenUsed marks token as used.
+func (r *SQLiteAuthRepo) MarkTokenUsed(ctx context.Context, tokenHash string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE refresh_tokens SET used = 1 WHERE token_hash = ?`, tokenHash)
+	return err
+}
+
+// RevokeUserTokens deletes all tokens for user.
+func (r *SQLiteAuthRepo) RevokeUserTokens(ctx context.Context, userID string) error {
+	return r.DeleteRefreshTokensForUser(userID)
 }

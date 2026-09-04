@@ -5,6 +5,7 @@
 Status: Draft
 Domain owner: Finance
 Related ADRs: ADR-001 (payment orchestration, not custody), ADR-003 (ledger discipline)
+Payment provider: **Polar.sh** (Merchant of Record) — see §9
 
 ---
 
@@ -242,18 +243,61 @@ Maps onto the Payment domain (`PaymentAttempt`) states; the Fund projects them i
 
 ---
 
-## 9. Payment Provider Contract (agnostic)
+## 9. Payment Provider — Polar.sh
 
-The Fund depends on a **provider interface**, not a specific provider (ADR-001).
+**Selected provider: Polar.sh** (Merchant of Record). The Fund depends on a Polar *adapter*
+behind a provider interface; the interface stays provider-agnostic, but Polar is the concrete
+implementation for the MVP (option B of the earlier decision).
 
-Required capabilities:
-- **Tokenization** — store no card data; only a `PaymentMethodReference` (ADR-001).
-- **PaymentIntent** — create + charge; provider owns processing/risk.
-- **Signed webhooks** — provider confirms outcome; platform verifies signature.
-- **Idempotency keys** — provider dedupes repeated charge attempts (I-5).
-- **Refunds** — from a SUCCEEDED intent.
-- **Reconciliation** — provider statement vs Fund ledger (ADR-003).
+### Why Polar
+- **Merchant of Record (MoR)** — Polar owns tax compliance, invoicing, and card-handling
+  regulatory surface. This strongly supports the "coordination, not custody" doctrine (ADR-001).
+- **Saved payment methods + off-session charges** — the exact capability the Fund needs for
+  authorized recurring contributions.
+- Lower fees; global payments.
 
-Provider selection (Stripe, Mercado Pago, Paddle, etc.) is deferred — **not** decided in this
-spec. Chosen provider becomes a concrete `infrastructure/payments` adapter, tested against
-this contract.
+### Mapping of required capabilities
+| Fund capability | Polar mechanism |
+|---|---|
+| Tokenization (no card data) | `customerSessions.create` → `PaymentMethod.createInline` embed; Polar stores the card. Platform holds only a `payment_method_id` reference (ADR-001). |
+| Autorizar método | Customer + embed flow; `setAsDefault` optional |
+| Cobro off-session (aporte recurrente) | **Draft order** pattern: `POST /v1/orders/` (no charge) → `POST /v1/orders/{id}/finalize` (charge saved payment method) |
+| Confirmación (I-3) | Webhook `order.paid` → mark Contribution SUCCEEDED → ledger COLLECTED |
+| Refunds | Order refund APIs (from a SUCCEEDED order) |
+| Reconciliación | Polar orders/statements vs Fund ledger (ADR-003) |
+
+### Draft-order charging flow (contribution)
+1. `POST /v1/orders/` — create draft for the customer with `amount` (contribution, smallest
+   currency unit), `currency` (ISO 4217, lowercase), `description` (e.g. trip + plan label).
+   Does **not** charge.
+2. `POST /v1/orders/{id}/finalize` — charge the customer's default payment method, or a
+   specific `payment_method_id`.
+3. Webhook `order.paid` → the platform maps success → ledger `COLLECTED` (I-3).
+
+> **Prerequisite:** off-session charges ("arbitrary charges" / draft-order finalize) are a
+> **preview feature requiring a paid Polar plan**, the `orders:write` scope, and
+> sales-management permissions. This must be provisioned before the Fund's automated
+> contribution charging is enabled.
+
+### Idempotency (I-5)
+Polar does not expose a client-supplied idempotency key on draft-order create/finalize.
+The platform enforces idempotency **at the model level**:
+- One `Contribution` = one draft order. Never create a new draft for an existing (plan, cycle).
+- `ChargeContribution` is guarded so a Contribution already PROCESSING/SUCCEEDED is never
+  re-finalized; terminal states are recorded before any new provider call.
+- The ledger append is single-write per contribution (I-6).
+
+### Security notes (per `02-engineering/security.md`)
+- Signed webhooks; validate Polar's signature before trusting `order.paid`.
+- Payment method embeds use short-lived server-issued `customerSession` tokens (expire 1h),
+  scoped to the customer; never favor client-trusted session creation.
+- Never store card data; persist only `payment_method_id` references.
+
+---
+
+## 10. Open Questions / Next Steps
+- [ ] Provision Polar paid plan + verify off-session arbitrary-charge access (preview feature).
+- [ ] Decide refund policy (full vs partial) and link to `RefundContribution`.
+- [ ] Finalize webhook signature verification details against Polar's docs.
+- [ ] Concrete `infrastructure/payments` Polar adapter (Go), tested against this contract.
+

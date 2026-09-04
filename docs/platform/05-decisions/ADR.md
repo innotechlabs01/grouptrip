@@ -55,3 +55,22 @@ Native iOS/Android apps are a post-MVP evolution, never a blocker.
 - Zero App Store submission/review friction; continuous deploy
 - In-flow mobile payments via Web Payments API
 - Clean Go/API layer keeps the frontend interchangeable — a future native app needs no backend rewrite
+
+## ADR-005 — Payment provider: Polar.sh
+**Status: Accepted**
+
+**Context:** The Fund (financial heart) needs saved payment methods with **off-session
+charges** for authorized recurring contributions, plus minimal regulatory surface per
+ADR-001 (coordination, not custody).
+
+**Decision:** Use **Polar.sh** as the payment provider. Polar is a Merchant of Record; the
+Fund persists only `payment_method_id` references (never card data) and charges authorized
+recurring contributions via the draft-order → finalize pattern. Kept behind a
+provider-agnostic interface for future swap.
+
+**Consequences:**
+- MoR: Polar owns tax, invoicing, and card-handling compliance
+- Contribution lifecycle: authorize (embed) → draft order → finalize → `order.paid` webhook → ledger
+- Off-session charges require a paid plan + preview access + `orders:write` scope — must be provisioned
+- Idempotency enforced at model level (Polar has no client idempotency key)
+- Concrete Go adapter under `infrastructure/payments`, replacing the earlier "deferred" choice

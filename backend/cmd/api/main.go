@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/frg/grouptrip/internal/application/authservice"
 	"github.com/frg/grouptrip/internal/application/commands"
 	"github.com/frg/grouptrip/internal/application/events"
 	"github.com/frg/grouptrip/internal/application/queries"
+	"github.com/frg/grouptrip/internal/infrastructure/authrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/contribrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/fundrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/payments"
@@ -34,6 +36,18 @@ func main() {
 		log.Fatalf("api: migrate contribution repo: %v", err)
 	}
 
+	// Auth
+	authRepo := authrepo.NewSQLiteAuthRepo(db)
+	if err := authRepo.Migrate(); err != nil {
+		log.Fatalf("api: migrate auth repo: %v", err)
+	}
+	jwtSecret := os.Getenv("AUTH_JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "dev-secret-min-32-bytes-change-me!!"
+		log.Printf("api: AUTH_JWT_SECRET not set, using dev secret")
+	}
+	authSvc := authservice.NewSessionService(authRepo, []byte(jwtSecret))
+
 	// Payment provider. Requires Polar env (POLAR_ACCESS_TOKEN / base URL); a missing
 	// token does not crash boot — contribution charges simply fail at request time.
 	polar := payments.NewPolarClientFromEnv(http.DefaultClient)
@@ -50,12 +64,13 @@ func main() {
 	// HTTP server; the Polar webhook route is enabled because contribRepo is wired.
 	// The webhook signature is verified with POLAR_WEBHOOK_SECRET; if it is unset the
 	// webhook route fails closed (processes no events).
-	srv := httptransport.NewServerWithPayments(
+	srv := httptransport.NewServerWithAuth(
 		fundRepo,
 		contribRepo,
 		os.Getenv("POLAR_WEBHOOK_SECRET"),
 		contributeCmd,
 		progressQuery,
+		authSvc,
 	)
 
 	addr := os.Getenv("PORT")

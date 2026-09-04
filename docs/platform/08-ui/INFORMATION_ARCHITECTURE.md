@@ -36,4 +36,5 @@ Trip
 - Minimal cognitive load — show status not just state (e.g. "82% funded", "3 pending").
 - Money is explicit: expected vs collected vs pending always distinguishable.
 - Irreversible financial actions require confirmation + audit.
-- Mobile-first (it's how trips are coordinated, on the phone).
+- PWA-first (mobile-installable) — one Next.js build added to the home screen as an icon,
+  running on iOS, Android, and desktop.

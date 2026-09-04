@@ -37,3 +37,21 @@ Do not build a self-owned wallet in the MVP.
 **Consequences:**
 - Dashboard + logic never confuse intended with real money
 - Reconciliation is possible
+
+## ADR-004 — PWA-first, native as extension
+**Status: Accepted**
+
+**Context:** Group trips are coordinated on the phone, in motion, from the "friend who
+always organizes" down to each participant checking "are we on track with the money?"
+A mobile experience is mandatory, but multiple native apps at launch fragment the team
+and add App Store / review friction.
+
+**Decision:** The MVP frontend is a single **PWA** (Next.js), mobile-installable with push
+notifications and Web Payments API (Apple Pay / Google Pay) for in-flow contributions.
+Native iOS/Android apps are a post-MVP evolution, never a blocker.
+
+**Consequences:**
+- One Next.js codebase serves iOS, Android, and desktop
+- Zero App Store submission/review friction; continuous deploy
+- In-flow mobile payments via Web Payments API
+- Clean Go/API layer keeps the frontend interchangeable — a future native app needs no backend rewrite

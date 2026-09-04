@@ -74,7 +74,9 @@ The product is fundamentally event-driven. Domain events propagate state:
 ## §10 Tech Foundations
 
 - Backend: Go, Clean Architecture, DDD, Domain Events
-- Frontend: Web/PWA, Next.js
+- Frontend: **PWA-first** — single Web/PWA (Next.js), installable on mobile, with push
+  notifications and Web Payments API (Apple Pay / Google Pay) for in-flow contributions
+- Native app = post-MVP evolution only, never a blocker (frontend interchangeable; no backend rewrite)
 - Database: PostgreSQL
 - Event-driven architecture
 - Monorepo

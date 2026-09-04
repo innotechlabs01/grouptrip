@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/frg/grouptrip/internal/application/commands"
+	"github.com/frg/grouptrip/internal/application/events"
+	"github.com/frg/grouptrip/internal/application/queries"
 	"github.com/frg/grouptrip/internal/infrastructure/contribrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/fundrepo"
 	"github.com/frg/grouptrip/internal/infrastructure/payments"
@@ -33,12 +36,27 @@ func main() {
 
 	// Payment provider. Requires Polar env (POLAR_ACCESS_TOKEN / base URL); a missing
 	// token does not crash boot — contribution charges simply fail at request time.
-	_ = payments.NewPolarClientFromEnv(http.DefaultClient)
+	polar := payments.NewPolarClientFromEnv(http.DefaultClient)
+
+	// Application commands and queries wired to repositories.
+	contributeCmd := &commands.ContributeCommand{
+		Funds:    fundRepo,
+		Contrs:   contribRepo,
+		Payments: polar,
+		Events:   events.NoopSink{},
+	}
+	progressQuery := &queries.GetFundProgress{Funds: fundRepo}
 
 	// HTTP server; the Polar webhook route is enabled because contribRepo is wired.
 	// The webhook signature is verified with POLAR_WEBHOOK_SECRET; if it is unset the
 	// webhook route fails closed (processes no events).
-	srv := httptransport.NewServerWithWebhook(fundRepo, contribRepo, os.Getenv("POLAR_WEBHOOK_SECRET"))
+	srv := httptransport.NewServerWithPayments(
+		fundRepo,
+		contribRepo,
+		os.Getenv("POLAR_WEBHOOK_SECRET"),
+		contributeCmd,
+		progressQuery,
+	)
 
 	addr := os.Getenv("PORT")
 	if addr == "" {

@@ -20,15 +20,16 @@ type ContributionRepository interface {
 
 // ContributeInput describes a charge request via Polar.
 type ContributeInput struct {
-	ContributionID string
-	FundID         string
-	PlanID         string // empty for one-off contributions
-	ProductID      string // Polar one-time product (required)
-	CustomerEmail  string // real email for Polar CreateCustomer
-	CustomerID     string // optional pre-created Polar customer id
-	Amount         int64
-	Currency       string
-	Description    string
+	ContributionID  string
+	FundID          string
+	PlanID          string // empty for one-off contributions
+	ProductID       string // Polar one-time product (required)
+	CustomerEmail   string // real email for Polar CreateCustomer
+	CustomerID      string // optional pre-created Polar customer id
+	PaymentMethodID string // optional payment method to charge (passed to FinalizeDraftOrder)
+	Amount          int64
+	Currency        string
+	Description     string
 }
 
 // ContributeCommand charges a member via Polar idempotently.
@@ -145,7 +146,7 @@ func (h ContributeCommand) Execute(in ContributeInput) error {
 	}
 
 	// --- Finalize (charge) ---
-	_, finalizeErr := h.Payments.FinalizeDraftOrder(context.Background(), orderID, "")
+	_, finalizeErr := h.Payments.FinalizeDraftOrder(context.Background(), orderID, in.PaymentMethodID)
 	if finalizeErr != nil {
 		if errors.Is(finalizeErr, payments.ErrCardDeclined) {
 			_ = cont.Fail("card_declined")

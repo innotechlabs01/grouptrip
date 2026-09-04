@@ -1,0 +1,15 @@
+name: CD QA
+on:
+  push:
+    branches: [qa]
+jobs:
+  deploy-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy PWA to Vercel QA
+        run: echo "Deploy QA"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Backend to Vercel QA
+        run: echo "Deploy Backend QA"

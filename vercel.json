@@ -1,0 +1,12 @@
+{
+  "git": {
+    "deploymentRoot": "pwa"
+  },
+  "buildCommand": "npm run build",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@grouptrip_api_url"
+  },
+  "github": {
+    "silent": true
+  }
+}

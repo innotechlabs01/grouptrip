@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [develop, qa, prd]
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.26' }
+      - run: go mod download
+      - run: go vet ./...
+      - run: golangci-lint run ./...
+      - run: go test -race -coverprofile=coverage.out ./...
+      - run: go tool cover -func=coverage.out | awk '/total:/ {if ($3+0 < 90) exit 1}'
+  pwa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pwa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test -- --coverage --coverageThreshold='{"global":{"branches":90,"functions":90,"lines":90,"statements":90}}'
+      - run: npm run build

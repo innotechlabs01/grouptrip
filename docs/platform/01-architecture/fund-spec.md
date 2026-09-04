@@ -308,8 +308,13 @@ The platform enforces idempotency **at the model level**:
 
 ## 10. Open Questions / Next Steps
 - [ ] Provision Polar paid plan + verify off-session arbitrary-charge access (preview feature).
+      **Status (probed 2026-09-04):** the LocalPlug sandbox org (`28dc9312-991b-4cb5-8022-192896135af4`)
+      has `orders:write` but returns `403 OffSessionChargesNotEnabled` on `POST /v1/orders/`. Off-session
+      is a preview feature that must be enabled by Polar support (paid plan) — **cannot be enabled via API**.
+      Action: contact Polar support to opt the org in; until then automated draft→finalize charging is blocked.
 - [ ] Decide refund policy (full vs partial) and link to `RefundContribution`.
-- [ ] **Webhook signature verification** against Polar's docs (handler currently parses and trusts `order.paid`; must validate the signed payload before attribution).
+- [x] **Webhook signature verification** (Standard Webhooks HMAC-SHA256: `webhook-id`/`webhook-timestamp`/
+      `webhook-signature`, raw-body sign, 401 on invalid, fail-closed without secret) — commit `c1f8e87`.
 - [x] Concrete `infrastructure/payments` Polar adapter (Go), tested against this contract.
 - [x] Idempotent contribution charge command (`ContributeCommand`) + `order.paid` webhook handler + `Contribution` persistence (SQLite).
 

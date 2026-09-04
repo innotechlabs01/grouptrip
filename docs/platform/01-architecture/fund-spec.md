@@ -267,12 +267,17 @@ implementation for the MVP (option B of the earlier decision).
 | Reconciliación | Polar orders/statements vs Fund ledger (ADR-003) |
 
 ### Draft-order charging flow (contribution)
-1. `POST /v1/orders/` — create draft for the customer with `amount` (contribution, smallest
-   currency unit), `currency` (ISO 4217, lowercase), `description` (e.g. trip + plan label).
-   Does **not** charge.
+1. `POST /v1/orders/` — create draft for the customer with `customer_id`, `product_id`
+   (a one-time Polar product), and optional `amount` (contribution, smallest currency unit),
+   `currency` (ISO 4217, lowercase), `description` (e.g. trip + plan label). Does **not** charge.
 2. `POST /v1/orders/{id}/finalize` — charge the customer's default payment method, or a
-   specific `payment_method_id`.
+   specific `payment_method_id` (our adapter exposes this as an explicit parameter).
 3. Webhook `order.paid` → the platform maps success → ledger `COLLECTED` (I-3).
+
+> The adapter requires a **`product_id`** (one-time product) at draft-order creation — the
+> Fund's contribution "product" must exist in Polar. A `Refund` must carry the exact amount
+> from the Contribution/ledger record (Polar requires an explicit refund amount; the platform
+> never hardcodes it).
 
 > **Prerequisite:** off-session charges ("arbitrary charges" / draft-order finalize) are a
 > **preview feature requiring a paid Polar plan**, the `orders:write` scope, and

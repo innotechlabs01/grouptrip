@@ -20,19 +20,23 @@ type PaymentProvider interface {
 	CreateDraftOrder(ctx context.Context, in DraftOrderInput) (string, error)
 
 	// FinalizeDraftOrder charges the customer's saved payment method (off-session).
-	FinalizeDraftOrder(ctx context.Context, orderID string) (string, error)
+	// paymentMethodID is optional — pass "" to use the customer's default method.
+	FinalizeDraftOrder(ctx context.Context, orderID, paymentMethodID string) (string, error)
 
-	// Refund reverses a SUCCEEDED order.
-	Refund(ctx context.Context, orderID string) error
+	// Refund reverses a SUCCEEDED order by the given amount (smallest currency unit).
+	// The caller supplies the amount from the Contribution/ledger record — Polar requires
+	// an explicit amount on a refund and the platform must not guess or hardcode it.
+	Refund(ctx context.Context, orderID string, amount int64) error
 }
 
 // DraftOrderInput describes a contribution charge (draft-order create).
 type DraftOrderInput struct {
 	CustomerID  string
-	Amount      int64  // smallest currency unit
+	ProductID   string // Polar one-time product to charge (req by POST /v1/orders/)
+	Amount      int64  // smallest currency unit (override of product price)
 	Currency    string // ISO 4217 lowercase
 	Description string
-	MethodID    string // payment method to charge (optional)
+	MethodID    string // payment method to charge (optional, used at finalize)
 }
 
 // ErrNotImplemented signals a stub capability not yet wired to a real provider.

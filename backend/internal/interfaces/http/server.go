@@ -75,6 +75,12 @@ func NewServerWithAuth(
 }
 
 func (s *Server) routes() {
+	// Budget routes
+	s.routesBudget()
+	// Decision routes
+	s.routesDecision()
+	// Expense routes
+	s.routesExpense()
 	// Trip routes
 	s.mux.HandleFunc("GET /trips", s.listTrips)
 	s.mux.HandleFunc("POST /trips", s.createTrip)
